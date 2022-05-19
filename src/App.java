@@ -7,7 +7,10 @@ import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.text.SimpleDateFormat;
+import java.time.LocalDate;
 import java.util.Date;
+import java.util.Scanner;
 
 public class App {
 
@@ -36,18 +39,29 @@ public class App {
         for (Object o : json_features_array) {
             JSONObject json_feature = (JSONObject) o;
             JSONObject json_properties = (JSONObject) json_feature.get("properties");
-            System.out.println(json_properties.get("place") + " " + json_properties.get("mag") + " " + json_properties.get("time"));
 
-            /*
-            long timeStamp = json_properties.get("time")
-            Timestamp stamp = new Timestamp(timeStamp);
-            Date date = new Date(stamp.getTime());
-            System.out.println(date);
-            */
+            long T = (long) json_properties.get("time");
 
+            String dateAsText = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss")
+                    .format(new Date(T)); //* 1000L https://stackoverflow.com/questions/29713781/convert-jsonobject-into-string-and-long-return-null
+
+            System.out.println(json_properties.get("place") + " " + json_properties.get("mag") + " " + dateAsText);
             JSONObject json_geometry = (JSONObject) json_feature.get("geometry");
             System.out.println(json_geometry.get("coordinates"));
         }
+
+        Scanner in = new Scanner(System.in);
+
+        System.out.println("Please enter a country:");
+        String country = in.nextLine();
+
+        System.out.println("Please enter count of days:");
+        int countOfDays = in.nextInt();
+
+        LocalDate endTime = LocalDate.now();
+        LocalDate startTime = endTime.minusDays(countOfDays);
+
+        System.out.println("Start time: " + startTime + " End Time: " + endTime);
 
         // Country, Place of the earthquake, magnitude, date and time of the earthquake
     }
