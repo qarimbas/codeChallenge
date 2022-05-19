@@ -17,7 +17,7 @@ import java.util.Scanner;
 
 public class App {
 
-    private static final double range = 10;
+    private static final Double range = 2.0;
     private static final String API_URL_BASE = "https://earthquake.usgs.gov/fdsnws/event/1/query?format=geojson&";
     private static final String EXAMPLE_API_URL = "https://earthquake.usgs.gov/fdsnws/event/1/query?format=geojson&starttime=2022-01-01&endtime=2022-01-02";
 
@@ -29,57 +29,9 @@ public class App {
 
         int countOfDays = Integer.parseInt(myInput[1]);
         LocalDate[] myInterval = timeInterval(countOfDays);
-
-
-        // Country, Place of the earthquake, magnitude, date and time of the earthquake
-        double[] myCoord = findCoordinates(myInput[0]);
-
-        runQuery(myInterval[0], myInterval[1], myCoord[0], myCoord[1]);
-    }
-
-    public static void runQuery(LocalDate startDate, LocalDate endDate, double latitude, double longitude) throws IOException, InterruptedException, ParseException {
-        //starttime=2022-01-01&endtime=2022-01-02
-        String API_URL;
-
-        double minLatitude = latitude - range;
-        double maxLatitude = latitude + range;
-        double minLongitude = longitude - range;
-        double maxLongitude = longitude + range;
-
-        API_URL = API_URL_BASE + "&starttime=" + startDate + "&endtime=" + endDate + "&minlatitude=" + minLatitude + "&maxlatitude=" + maxLatitude + "&minlongitude=" + minLongitude + "&maxlongitude=" + maxLongitude;
-
-        System.out.println(API_URL);
-
-        HttpClient client = HttpClient.newHttpClient();
-        HttpRequest request = HttpRequest.newBuilder()
-                .GET().header("accept", "application/json")
-                .uri(URI.create(API_URL))
-                .build();
-        HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
-        System.out.println(response.body());
-        System.out.println("************end of response body ********************");
-
-        // Convert JSON String to JSON Object
-        JSONParser parser = new JSONParser();
-        JSONObject jsonObject = (JSONObject) parser.parse(response.body());
-        System.out.println(jsonObject.toString());
-        System.out.println("************ end of print json  *******************");
-
-        //System.out.println(jsonObject.get("type"));
-
-        JSONArray json_features_array = (JSONArray) jsonObject.get("features");
-        for (Object o : json_features_array) {
-            JSONObject json_feature = (JSONObject) o;
-            JSONObject json_properties = (JSONObject) json_feature.get("properties");
-
-            long T = (long) json_properties.get("time");
-
-            String dateAsText = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss")
-                    .format(new Date(T)); //* 1000L https://stackoverflow.com/questions/29713781/convert-jsonobject-into-string-and-long-return-null
-
-            System.out.println(json_properties.get("place") + " " + json_properties.get("mag") + " " + dateAsText);
-            JSONObject json_geometry = (JSONObject) json_feature.get("geometry");
-            System.out.println(json_geometry.get("coordinates"));
+        Double[] myCoord = findCoordinates(myInput[0]);
+        if(myCoord[0] != null) {
+            runQuery(myInterval[0], myInterval[1], myCoord[0], myCoord[1], myInput[0], countOfDays);
         }
     }
 
@@ -91,11 +43,19 @@ public class App {
         System.out.println("Please enter a country:");
         String country = in.nextLine();
 
-        System.out.println("Please enter count of days:");
-        int countOfDays = in.nextInt();
+        while(true) {
+            try {
+                System.out.println("Please enter count of days:");
+                int countOfDays = Integer.parseInt(in.nextLine());
+                inputArray[0] = country;
+                inputArray[1] = String.valueOf(countOfDays);
+                break;
+            }
+            catch (Exception e) {
+                System.out.println("You have entered a wrong count of days.");
+            }
 
-        inputArray[0] = country;
-        inputArray[1] = String.valueOf(countOfDays);
+        }
         return inputArray;
     }
 
@@ -105,15 +65,16 @@ public class App {
         LocalDate endTime = LocalDate.now();
         LocalDate startTime = endTime.minusDays(countOfDays);
 
-        System.out.println("Start time: " + startTime + " End Time: " + endTime);
+        //System.out.println("Start time: " + startTime + " End Time: " + endTime);
 
         timeArray[0] = startTime;
         timeArray[1] = endTime;
         return timeArray;
     }
 
-    public static double[] findCoordinates( String countryName) {
-        double[] coor = new double[2];
+    public static Double[] findCoordinates( String countryName) {
+        Double[] coor = new Double[2];
+        boolean countryFound = false;
         try {
             File myObj = new File("./src/countries.txt");
             Scanner myReader = new Scanner(myObj);
@@ -125,16 +86,71 @@ public class App {
 
                     coor[0] = Double.parseDouble(values[1]); //latitude
                     coor[1] = Double.parseDouble(values[2]); //longitude
-                    System.out.println("country found=" + countryName + " " + values[1] + " " + values[2] + " " + values[3]);
+                    //System.out.println("Latitude, longitude found for " + countryName + " " + values[1] + " " + values[2] );
+                    countryFound = true;
                     break;
                 }
             }
             myReader.close();
 
         } catch (FileNotFoundException e) {
-            System.out.println("An error occurred in findCoordinates ");
-            e.printStackTrace();
+            System.out.println("countries.txt file not found.");
+            //e.printStackTrace();
         }
+        if(!countryFound)
+            System.out.println("Country " + countryName + " not found!");
         return coor;
     }
+
+    public static void runQuery(LocalDate startDate, LocalDate endDate, Double latitude, Double longitude, String countryName, int days) throws IOException, InterruptedException, ParseException {
+        String API_URL;
+
+        Double minLatitude = latitude - range;
+        Double maxLatitude = latitude + range;
+        Double minLongitude = longitude - range;
+        Double maxLongitude = longitude + range;
+
+        API_URL = API_URL_BASE + "&starttime=" + startDate + "&endtime=" + endDate + "&minlatitude=" + minLatitude + "&maxlatitude=" + maxLatitude + "&minlongitude=" + minLongitude + "&maxlongitude=" + maxLongitude;
+
+        //System.out.println(API_URL);
+
+        HttpClient client = HttpClient.newHttpClient();
+        HttpRequest request = HttpRequest.newBuilder()
+                .GET().header("accept", "application/json")
+                .uri(URI.create(API_URL))
+                .build();
+        HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+        //System.out.println(response.body());
+        //System.out.println("************end of response body ********************");
+
+        // Convert JSON String to JSON Object
+        JSONParser parser = new JSONParser();
+        JSONObject jsonObject = (JSONObject) parser.parse(response.body());
+        //System.out.println(jsonObject.toString());
+        //System.out.println("************ end of print json  *******************");
+
+        //System.out.println(jsonObject.get("type"));
+        JSONObject json_metadata = (JSONObject) jsonObject.get("metadata");
+        //System.out.println("metadata: " + json_metadata + json_metadata.get("count"));
+        long count = (long) json_metadata.get("count");
+        if( count == 0) {
+            System.out.println("No Earthquakes were recorded past {" + String.valueOf(days) +"} days.");
+        }
+        else {
+            JSONArray json_features_array = (JSONArray) jsonObject.get("features");
+            for (Object o : json_features_array) {
+                JSONObject json_feature = (JSONObject) o;
+                JSONObject json_properties = (JSONObject) json_feature.get("properties");
+
+                long T = (long) json_properties.get("time");
+
+                String dateAsText = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss")
+                        .format(new Date(T)); //* 1000L https://stackoverflow.com/questions/29713781/convert-jsonobject-into-string-and-long-return-null
+
+                System.out.println(countryName + " " + json_properties.get("place") + " " + json_properties.get("mag") + " " + dateAsText);
+                // Country, Place of the earthquake, magnitude, date and time of the earthquake
+            }
+        }
+    }
+
 }
